@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Remote Patient Monitoring — Medical Center Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d2e;
+      --card: #1e2235;
+      --border: #2a2f4a;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --accent: #4f8ef7;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --critical: #ff3860;
+      --warning: #f59e0b;
+      --info: #4f8ef7;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Navbar ── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .nav-brand span { font-size: 1.4rem; }
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .pulse-dot {
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.3; }
+    }
+
+    /* ── Layout ── */
+    main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* ── Summary cards ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .summary-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .summary-card .label { font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; }
+    .summary-card .value { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .summary-card .sub   { font-size: 0.7rem; color: var(--muted); margin-top: 4px; }
+    .card-blue   { border-top: 3px solid var(--accent); }
+    .card-green  { border-top: 3px solid var(--green); }
+    .card-red    { border-top: 3px solid var(--red); }
+    .card-yellow { border-top: 3px solid var(--yellow); }
+
+    /* ── Two-column layout ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── Card ── */
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .panel-header {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .badge {
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+    .badge-red    { background: rgba(239,68,68,.2); color: var(--red); }
+    .badge-yellow { background: rgba(245,158,11,.2); color: var(--yellow); }
+    .badge-green  { background: rgba(34,197,94,.2);  color: var(--green); }
+    .badge-blue   { background: rgba(79,142,247,.2); color: var(--accent); }
+
+    /* ── Patient table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(42,47,74,.5);
+      color: var(--text);
+    }
+    tr:hover td { background: rgba(79,142,247,.05); }
+    tr:last-child td { border-bottom: none; }
+
+    /* ── Status pills ── */
+    .status-pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+    .status-0 { background:rgba(34,197,94,.15);  color: var(--green); }
+    .status-1 { background:rgba(245,158,11,.15); color: var(--yellow); }
+    .status-2 { background:rgba(245,158,11,.15); color: var(--yellow); }
+    .status-3 { background:rgba(239,68,68,.15);  color: var(--red); }
+    .status-4 { background:rgba(239,68,68,.15);  color: var(--red); }
+    .status-5 { background:rgba(239,68,68,.15);  color: var(--red); }
+
+    /* ── Alert list ── */
+    .alert-item {
+      padding: 12px 14px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 0.82rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .alert-critical { background: rgba(255,56,96,.12); border: 1px solid rgba(255,56,96,.3); }
+    .alert-warning  { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); }
+    .alert-info     { background: rgba(79,142,247,.1); border: 1px solid rgba(79,142,247,.3); }
+    .alert-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+    .alert-body .meta { font-size: 0.68rem; color: var(--muted); margin-top: 3px; }
+    .ack-btn {
+      margin-left: auto;
+      flex-shrink: 0;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .ack-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Chart ── */
+    .chart-wrap { position: relative; height: 240px; }
+
+    /* ── Patient detail modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 90%;
+      max-width: 800px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .modal-header h2 { font-size: 1rem; font-weight: 700; }
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    .vitals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .vital-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+    }
+    .vital-card .vname { font-size: 0.68rem; color: var(--muted); margin-bottom: 4px; }
+    .vital-card .vval  { font-size: 1.4rem; font-weight: 700; }
+    .vital-card .vunit { font-size: 0.65rem; color: var(--muted); }
+    .vital-normal   { color: var(--green); }
+    .vital-warning  { color: var(--yellow); }
+    .vital-critical { color: var(--red); }
+
+    /* ── Hospital section ── */
+    .hospital-table { font-size: 0.82rem; }
+    .rank-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.8rem;
+    }
+    .rank-1 { background: rgba(255,215,0,.2); border-color: gold; color: gold; }
+    .rank-2 { background: rgba(192,192,192,.2); border-color: silver; color: silver; }
+    .rank-3 { background: rgba(205,127,50,.2); border-color: #cd7f32; color: #cd7f32; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+    .tab {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .tab.active { background: var(--card); color: var(--text); }
+
+    /* ── Sections ── */
+    .tab-section { display: none; }
+    .tab-section.active { display: block; }
+
+    /* ── Scrollable lists ── */
+    .scroll-list { max-height: 360px; overflow-y: auto; }
+    .scroll-list::-webkit-scrollbar { width: 4px; }
+    .scroll-list::-webkit-scrollbar-track { background: transparent; }
+    .scroll-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ── Loader ── */
+    .loader {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 120px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      gap: 8px;
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+      padding: 32px 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav>
+  <div class="nav-brand">
+    <span>🏥</span>
+    Remote Patient Monitoring — Medical Center
+  </div>
+  <div class="nav-status">
+    <div class="pulse-dot"></div>
+    <span id="last-update">Connecting…</span>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ── Tabs ── -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('overview')">Overview</button>
+    <button class="tab" onclick="switchTab('patients')">Patients</button>
+    <button class="tab" onclick="switchTab('alerts')">Alerts <span id="alert-badge" class="badge badge-red" style="display:none"></span></button>
+    <button class="tab" onclick="switchTab('hospitals')">Hospital Ranking</button>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- Tab: Overview                                               -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <div id="tab-overview" class="tab-section active">
+    <!-- Summary cards -->
+    <div class="summary-grid" id="summary-grid">
+      <div class="summary-card card-blue">
+        <div class="label">Total Patients</div>
+        <div class="value" id="s-total">—</div>
+        <div class="sub">registered</div>
+      </div>
+      <div class="summary-card card-green">
+        <div class="label">Normal Status</div>
+        <div class="value" id="s-normal">—</div>
+        <div class="sub">patients</div>
+      </div>
+      <div class="summary-card card-red">
+        <div class="label">Critical Alerts</div>
+        <div class="value" id="s-critical">—</div>
+        <div class="sub">unacknowledged</div>
+      </div>
+      <div class="summary-card card-yellow">
+        <div class="label">Warnings</div>
+        <div class="value" id="s-warning">—</div>
+        <div class="sub">unacknowledged</div>
+      </div>
+    </div>
+
+    <!-- Latest vitals + chart -->
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-header">
+          Latest Vitals
+          <span class="badge badge-blue" id="vitals-ts"></span>
+        </div>
+        <div class="table-wrap">
+          <table id="vitals-table">
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>HR</th>
+                <th>BP</th>
+                <th>SpO₂</th>
+                <th>Temp</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="vitals-tbody">
+              <tr><td colspan="6"><div class="loader"><div class="spinner"></div> Loading…</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">Health Status Distribution</div>
+        <div class="chart-wrap">
+          <canvas id="status-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- Tab: Patients                                               -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <div id="tab-patients" class="tab-section">
+    <div class="panel">
+      <div class="panel-header">Patient Registry</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Name</th><th>Age</th><th>Gender</th>
+              <th>Condition</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="patients-tbody">
+            <tr><td colspan="6"><div class="loader"><div class="spinner"></div> Loading…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- Tab: Alerts                                                 -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <div id="tab-alerts" class="tab-section">
+    <div class="panel">
+      <div class="panel-header">
+        Active Alerts
+        <button onclick="loadAlerts()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:.75rem;">Refresh</button>
+      </div>
+      <div id="alerts-list" class="scroll-list">
+        <div class="loader"><div class="spinner"></div> Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- Tab: Hospital Ranking                                       -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <div id="tab-hospitals" class="tab-section">
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-header">VIKOR Hospital Rankings</div>
+        <div id="hospital-list">
+          <div class="loader"><div class="spinner"></div> Loading…</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">AHP Criterion Weights</div>
+        <div class="chart-wrap" style="height:200px;">
+          <canvas id="ahp-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Patient Detail Modal ── -->
+<div class="modal-overlay" id="patient-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Patient Details</h2>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-vitals-grid" class="vitals-grid"></div>
+    <div class="panel-header" style="margin-top:16px">Recent Readings</div>
+    <div class="chart-wrap" style="height:220px;margin-bottom:16px;">
+      <canvas id="modal-chart"></canvas>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Time</th><th>HR</th><th>SBP</th><th>DBP</th><th>SpO₂</th><th>Temp</th><th>RR</th><th>Status</th></tr>
+        </thead>
+        <tbody id="modal-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';  // same origin
+let statusChart = null, ahpChart = null, modalChart = null;
+
+// ── Data loading ─────────────────────────────────────────────────────────────
+
+async function fetchDashboard() {
+  try {
+    const res = await fetch(`${API}/api/dashboard`);
+    const data = await res.json();
+    renderDashboard(data);
+  } catch (e) {
+    console.error('Dashboard fetch failed', e);
+  }
+}
+
+async function loadAlerts() {
+  const res = await fetch(`${API}/api/alerts?acknowledged=false`);
+  const data = await res.json();
+  renderAlerts(data);
+}
+
+async function loadHospitals() {
+  const res = await fetch(`${API}/api/hospital-selection`);
+  const data = await res.json();
+  renderHospitals(data);
+}
+
+async function openPatientModal(patientId, patientName) {
+  document.getElementById('modal-title').textContent = `${patientName} (${patientId})`;
+  document.getElementById('patient-modal').classList.add('open');
+  const res = await fetch(`${API}/api/patients/${patientId}/vitals?limit=30`);
+  const vitals = await res.json();
+  renderModalContent(vitals);
+}
+
+function closeModal() {
+  document.getElementById('patient-modal').classList.remove('open');
+}
+
+// ── Renderers ────────────────────────────────────────────────────────────────
+
+function renderDashboard(data) {
+  const s = data.summary;
+  document.getElementById('s-total').textContent    = s.total_patients;
+  document.getElementById('s-normal').textContent   = s.normal_patients;
+  document.getElementById('s-critical').textContent = s.critical_alerts;
+  document.getElementById('s-warning').textContent  = s.warning_alerts;
+
+  const badge = document.getElementById('alert-badge');
+  const total = s.critical_alerts + s.warning_alerts;
+  if (total > 0) {
+    badge.textContent = total;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
+
+  const ts = new Date(data.timestamp).toLocaleTimeString();
+  document.getElementById('last-update').textContent = `Last updated: ${ts}`;
+  document.getElementById('vitals-ts').textContent = ts;
+
+  renderVitalsTable(data.latest_vitals, data.health_status_map);
+  renderStatusChart(data.latest_vitals, data.health_status_map);
+  renderPatientsTable(data.patients);
+}
+
+function renderVitalsTable(vitals, statusMap) {
+  const tbody = document.getElementById('vitals-tbody');
+  if (!vitals.length) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">No readings yet — start the IoT simulator.</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = vitals.map(v => `
+    <tr>
+      <td>${v.patient_id}</td>
+      <td>${v.heart_rate?.toFixed(0) ?? '—'} <small style="color:var(--muted)">bpm</small></td>
+      <td>${v.systolic_bp?.toFixed(0) ?? '—'}/${v.diastolic_bp?.toFixed(0) ?? '—'} <small style="color:var(--muted)">mmHg</small></td>
+      <td>${v.spo2?.toFixed(1) ?? '—'}<small style="color:var(--muted)">%</small></td>
+      <td>${v.body_temperature?.toFixed(1) ?? '—'}<small style="color:var(--muted)">°C</small></td>
+      <td><span class="status-pill status-${v.health_status}">${statusMap[v.health_status] ?? 'Normal'}</span></td>
+    </tr>
+  `).join('');
+}
+
+function renderPatientsTable(patients) {
+  const tbody = document.getElementById('patients-tbody');
+  if (!patients.length) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">No patients registered yet.</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = patients.map(p => `
+    <tr>
+      <td><code style="color:var(--accent);font-size:.8rem">${p.patient_id}</code></td>
+      <td>${p.name}</td>
+      <td>${p.age}</td>
+      <td>${p.gender}</td>
+      <td>${p.condition}</td>
+      <td>
+        <button onclick="openPatientModal('${p.patient_id}','${p.name}')"
+          style="background:transparent;border:1px solid var(--border);color:var(--accent);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:.75rem;">
+          View
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderAlerts(alerts) {
+  const el = document.getElementById('alerts-list');
+  if (!alerts.length) {
+    el.innerHTML = '<div class="empty-state">No active alerts 🎉</div>';
+    return;
+  }
+  el.innerHTML = alerts.map(a => `
+    <div class="alert-item alert-${a.severity}" id="alert-${a.id}">
+      <span class="alert-icon">${a.severity === 'critical' ? '🚨' : a.severity === 'warning' ? '⚠️' : 'ℹ️'}</span>
+      <div class="alert-body">
+        <strong>${a.message}</strong>
+        <div class="meta">${a.patient_id} &nbsp;·&nbsp; ${a.created_at?.replace('T',' ').replace('Z','')}</div>
+      </div>
+      <button class="ack-btn" onclick="ackAlert(${a.id})">Acknowledge</button>
+    </div>
+  `).join('');
+}
+
+function renderHospitals(data) {
+  const rankings = data.vikor?.rankings ?? [];
+  const el = document.getElementById('hospital-list');
+  if (!rankings.length) {
+    el.innerHTML = '<div class="empty-state">No ranking data.</div>';
+    return;
+  }
+  el.innerHTML = `
+    <table class="hospital-table" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="padding:8px 12px;color:var(--muted);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border)">Rank</th>
+          <th style="padding:8px 12px;color:var(--muted);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border)">Hospital</th>
+          <th style="padding:8px 12px;color:var(--muted);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border)">Q Score</th>
+          <th style="padding:8px 12px;color:var(--muted);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border)">S (Utility)</th>
+          <th style="padding:8px 12px;color:var(--muted);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border)">R (Regret)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rankings.map(r => `
+          <tr>
+            <td style="padding:10px 12px;border-bottom:1px solid rgba(42,47,74,.5)">
+              <span class="rank-num rank-${r.rank}">${r.rank}</span>
+            </td>
+            <td style="padding:10px 12px;border-bottom:1px solid rgba(42,47,74,.5);font-weight:600">${r.hospital}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid rgba(42,47,74,.5);color:var(--accent)">${r.Q.toFixed(4)}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid rgba(42,47,74,.5)">${r.S.toFixed(4)}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid rgba(42,47,74,.5)">${r.R.toFixed(4)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+
+  renderAHPChart(data.ahp);
+}
+
+function renderStatusChart(vitals, statusMap) {
+  const counts = {};
+  vitals.forEach(v => {
+    const label = statusMap[v.health_status] ?? 'Normal';
+    counts[label] = (counts[label] || 0) + 1;
+  });
+  const labels = Object.keys(counts);
+  const values = Object.values(counts);
+  const colors = ['#22c55e','#f59e0b','#f59e0b','#ef4444','#ef4444','#ef4444'];
+
+  const ctx = document.getElementById('status-chart').getContext('2d');
+  if (statusChart) statusChart.destroy();
+  statusChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: labels.map((_,i) => colors[i] || '#4f8ef7'),
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#8892a4', font: { size: 11 }, padding: 16 } }
+      }
+    }
+  });
+}
+
+function renderAHPChart(ahp) {
+  if (!ahp) return;
+  const labels  = ahp.criteria;
+  const values  = labels.map(c => ahp.weights[c] * 100);
+  const ctx = document.getElementById('ahp-chart').getContext('2d');
+  if (ahpChart) ahpChart.destroy();
+  ahpChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Weight (%)',
+        data: values,
+        backgroundColor: '#4f8ef7',
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8892a4', font: { size: 10 } }, grid: { color: '#2a2f4a' } },
+        y: { ticks: { color: '#8892a4', font: { size: 10 } }, grid: { color: '#2a2f4a' } },
+      }
+    }
+  });
+}
+
+function renderModalContent(vitals) {
+  if (!vitals.length) {
+    document.getElementById('modal-vitals-grid').innerHTML = '<div class="empty-state">No readings available.</div>';
+    document.getElementById('modal-tbody').innerHTML = '';
+    return;
+  }
+  const latest = vitals[0];
+
+  function vColor(key, val) {
+    const normals = {
+      heart_rate:[60,100], systolic_bp:[90,120], diastolic_bp:[60,80],
+      spo2:[95,100], body_temperature:[36.1,37.2], respiratory_rate:[12,20]
+    };
+    const range = normals[key];
+    if (!range) return 'vital-normal';
+    if (val < range[0] || val > range[1]) return 'vital-warning';
+    return 'vital-normal';
+  }
+
+  const vitalDefs = [
+    { key:'heart_rate',       label:'Heart Rate',   unit:'bpm' },
+    { key:'systolic_bp',      label:'Systolic BP',  unit:'mmHg' },
+    { key:'diastolic_bp',     label:'Diastolic BP', unit:'mmHg' },
+    { key:'spo2',             label:'SpO₂',         unit:'%' },
+    { key:'body_temperature', label:'Temperature',  unit:'°C' },
+    { key:'respiratory_rate', label:'Resp Rate',    unit:'br/min' },
+  ];
+
+  document.getElementById('modal-vitals-grid').innerHTML = vitalDefs.map(d => `
+    <div class="vital-card">
+      <div class="vname">${d.label}</div>
+      <div class="vval ${vColor(d.key, latest[d.key])}">${latest[d.key]?.toFixed(1) ?? '—'}</div>
+      <div class="vunit">${d.unit}</div>
+    </div>
+  `).join('');
+
+  // Sparkline chart for HR + SpO2
+  const labels  = vitals.slice(0,20).map(v => v.timestamp?.slice(11,19)).reverse();
+  const hrData  = vitals.slice(0,20).map(v => v.heart_rate).reverse();
+  const spo2Data= vitals.slice(0,20).map(v => v.spo2).reverse();
+  const ctx = document.getElementById('modal-chart').getContext('2d');
+  if (modalChart) modalChart.destroy();
+  modalChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Heart Rate (bpm)', data:hrData, borderColor:'#ef4444', tension:.4, fill:false, pointRadius:2 },
+        { label:'SpO₂ (%)', data:spo2Data, borderColor:'#4f8ef7', tension:.4, fill:false, pointRadius:2, yAxisID:'y2' },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:'#8892a4', font:{size:11} } } },
+      scales:{
+        x:  { ticks:{ color:'#8892a4', font:{size:9}, maxTicksLimit:8 }, grid:{ color:'#2a2f4a' } },
+        y:  { ticks:{ color:'#8892a4', font:{size:10} }, grid:{ color:'#2a2f4a' }, title:{ display:true, text:'HR', color:'#8892a4', font:{size:10} } },
+        y2: { position:'right', ticks:{ color:'#8892a4', font:{size:10} }, grid:{ drawOnChartArea:false }, title:{ display:true, text:'SpO₂', color:'#8892a4', font:{size:10} }, min:80, max:102 },
+      }
+    }
+  });
+
+  // History table
+  document.getElementById('modal-tbody').innerHTML = vitals.map(v => `
+    <tr>
+      <td style="font-size:.75rem;color:var(--muted)">${v.timestamp?.replace('T',' ').replace('Z','') ?? '—'}</td>
+      <td>${v.heart_rate?.toFixed(0) ?? '—'}</td>
+      <td>${v.systolic_bp?.toFixed(0) ?? '—'}</td>
+      <td>${v.diastolic_bp?.toFixed(0) ?? '—'}</td>
+      <td>${v.spo2?.toFixed(1) ?? '—'}</td>
+      <td>${v.body_temperature?.toFixed(1) ?? '—'}</td>
+      <td>${v.respiratory_rate?.toFixed(0) ?? '—'}</td>
+      <td><span class="status-pill status-${v.health_status}">${v.health_label ?? 'Normal'}</span></td>
+    </tr>
+  `).join('');
+}
+
+// ── Actions ──────────────────────────────────────────────────────────────────
+
+async function ackAlert(id) {
+  await fetch(`${API}/api/alerts/${id}/acknowledge`, { method:'POST' });
+  document.getElementById(`alert-${id}`)?.remove();
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['overview','patients','alerts','hospitals'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+
+  if (name === 'alerts')    loadAlerts();
+  if (name === 'hospitals') loadHospitals();
+}
+
+// ── Close modal on overlay click ─────────────────────────────────────────────
+document.getElementById('patient-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── Auto-refresh every 30 seconds ────────────────────────────────────────────
+fetchDashboard();
+setInterval(fetchDashboard, 30000);
+</script>
+</body>
+</html>
