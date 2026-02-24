@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: remote-patient-monitoring
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn demo_server:app --workers 1 --threads 4 --timeout 120
+    envVars:
+      - key: SENSOR_SEND_INTERVAL
+        value: "15"
+      - key: NUM_SIMULATED_PATIENTS
+        value: "6"
+      - key: DATABASE_PATH
+        value: "/tmp/rpm_demo.db"
+    healthCheckPath: /health
