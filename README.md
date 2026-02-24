@@ -9,7 +9,7 @@ A cloud-based Remote Patient Monitoring (RPM) system built around the three-tier
 
 ## Live Demo
 
-'https://remote-patient-montioring.onrender.com/'
+https://remote-patient-montioring.onrender.com/
 
 The demo runs a built-in IoT simulator — **no hardware, no extra config needed.** Six patients with different conditions (Hypertension, Heart Disease, COPD, Diabetes, Healthy) stream live vitals every 15 seconds. Critical events trigger automatic alerts visible on the dashboard.
 
