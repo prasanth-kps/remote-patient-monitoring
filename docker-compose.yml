@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    container_name: rpm-gateway
+    ports:
+      - "5001:5001"
+    environment:
+      GATEWAY_HOST: "0.0.0.0"
+      GATEWAY_PORT: "5001"
+      MEDICAL_CENTER_HOST: "medical-center"
+      MEDICAL_CENTER_PORT: "5002"
+    depends_on:
+      - medical-center
+    restart: unless-stopped
+
+  medical-center:
+    build:
+      context: .
+      dockerfile: Dockerfile.medical
+    container_name: rpm-medical-center
+    ports:
+      - "5002:5002"
+    environment:
+      MEDICAL_CENTER_HOST: "0.0.0.0"
+      MEDICAL_CENTER_PORT: "5002"
+    volumes:
+      - rpm_data:/app/data
+    restart: unless-stopped
+
+  simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile.simulator
+    container_name: rpm-simulator
+    environment:
+      GATEWAY_HOST: "gateway"
+      GATEWAY_PORT: "5001"
+      SENSOR_SEND_INTERVAL: "30"
+      NUM_SIMULATED_PATIENTS: "5"
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+volumes:
+  rpm_data:
