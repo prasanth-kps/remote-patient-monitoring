@@ -7,6 +7,23 @@ A cloud-based Remote Patient Monitoring (RPM) system built around the three-tier
 
 ---
 
+## Live Demo
+
+**One-click deploy — no download required:**
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/prasanth-kps/remote-patient-montioring)
+
+Clicking the button will:
+1. Fork/connect this repo to your free Render account
+2. Build and deploy the all-in-one demo server automatically
+3. Give you a public HTTPS URL (e.g. `https://remote-patient-monitoring.onrender.com`)
+
+The demo runs a built-in IoT simulator — **no hardware, no extra config needed.** Six patients with different conditions (Hypertension, Heart Disease, COPD, Diabetes, Healthy) stream live vitals every 15 seconds. Critical events trigger automatic alerts visible on the dashboard.
+
+> **Note:** Render's free tier spins down after 15 minutes of inactivity. The first request after a spin-down may take ~30 seconds to respond.
+
+---
+
 ## Architecture
 
 ```
@@ -32,6 +49,19 @@ A cloud-based Remote Patient Monitoring (RPM) system built around the three-tier
 ---
 
 ## Quick Start
+
+### Option A — All-in-one demo server (simplest)
+
+Runs the gateway, medical center, and IoT simulator in **one process**:
+
+```bash
+pip install -r requirements.txt
+python demo_server.py
+```
+
+Dashboard → http://localhost:5002 — patients start streaming in ~15 seconds.
+
+### Option B — Full three-service setup
 
 ### 1. Install dependencies
 
@@ -63,7 +93,7 @@ Readings will appear in the dashboard within 30 seconds.
 
 ---
 
-## Docker Compose (all three services)
+### Option C — Docker Compose (all three services)
 
 ```bash
 docker-compose up --build
