@@ -9,14 +9,7 @@ A cloud-based Remote Patient Monitoring (RPM) system built around the three-tier
 
 ## Live Demo
 
-**One-click deploy — no download required:**
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/prasanth-kps/remote-patient-montioring)
-
-Clicking the button will:
-1. Fork/connect this repo to your free Render account
-2. Build and deploy the all-in-one demo server automatically
-3. Give you a public HTTPS URL (e.g. `https://remote-patient-monitoring.onrender.com`)
+'https://remote-patient-montioring.onrender.com/'
 
 The demo runs a built-in IoT simulator — **no hardware, no extra config needed.** Six patients with different conditions (Hypertension, Heart Disease, COPD, Diabetes, Healthy) stream live vitals every 15 seconds. Critical events trigger automatic alerts visible on the dashboard.
 
